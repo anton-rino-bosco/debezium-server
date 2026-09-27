@@ -142,4 +142,25 @@ public class BaseChangeConsumer {
         }
         return result;
     }
+
+    /**
+     * Extracts raw Connect header values from the {@link org.apache.kafka.connect.source.SourceRecord},
+     * bypassing the header converter.
+     *
+     * <p>The {@link #convertHeaders(BatchEvent)} method reads from {@link BatchEvent#headers()}, where
+     * headers are already serialized by the header converter (e.g., {@code JsonConverter} wrapping each
+     * value in {@code {"schema":...,"payload":"..."}} or JSON string representation). This method reads
+     * directly from {@link org.apache.kafka.connect.source.SourceRecord#headers()}, where header values are
+     * still raw Java objects (typically Strings for the Outbox Event Router).
+     *
+     * @param record the batch event containing the source record and headers
+     * @return a map of raw header keys to their string representation (null header values are mapped to empty strings); never null
+     */
+    protected Map<String, String> convertRawHeaders(BatchEvent record) {
+        Map<String, String> result = new HashMap<>();
+        if (record.record() != null && record.record().headers() != null) {
+            record.record().headers().forEach(h -> result.put(h.key(), h.value() != null ? asString(h.value()) : ""));
+        }
+        return result;
+    }
 }

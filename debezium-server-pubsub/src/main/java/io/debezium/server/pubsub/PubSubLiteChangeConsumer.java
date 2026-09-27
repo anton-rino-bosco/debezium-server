@@ -40,6 +40,7 @@ import com.google.pubsub.v1.PubsubMessage;
 
 import io.debezium.DebeziumException;
 import io.debezium.Module;
+import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Field;
 import io.debezium.metadata.ComponentMetadata;
 import io.debezium.metadata.ComponentMetadataFactory;
@@ -62,12 +63,18 @@ public class PubSubLiteChangeConsumer extends BaseChangeConsumer implements Debe
     private final ComponentMetadataFactory componentMetadataFactory = new ComponentMetadataFactory();
 
     private static final String PROP_PREFIX = "debezium.sink.pubsublite.";
+    private static final String PROP_HEADER_SCHEMAS_ENABLE = "debezium.format.header.schemas.enable";
 
     public interface PublisherBuilder {
         Publisher get(String topicName);
     }
 
-    private PubSubLiteChangeConsumerConfig config;
+    @VisibleForTesting
+    PubSubLiteChangeConsumerConfig config;
+
+    @VisibleForTesting
+    boolean headerSchemasEnabled = true;
+
     private PublisherBuilder publisherBuilder;
     private final Map<String, Publisher> publishers = new HashMap<>();
 
@@ -82,6 +89,7 @@ public class PubSubLiteChangeConsumer extends BaseChangeConsumer implements Debe
         // Load configuration
         io.debezium.config.Configuration configuration = io.debezium.config.Configuration.from(getConfigSubset(mpConfig, PROP_PREFIX));
         this.config = new PubSubLiteChangeConsumerConfig(configuration);
+        this.headerSchemasEnabled = isHeaderSchemasEnabled(mpConfig);
 
         String projectId = (config.getProjectId() != null) ? config.getProjectId() : ServiceOptions.getDefaultProjectId();
         String region = config.getRegion();
@@ -152,7 +160,8 @@ public class PubSubLiteChangeConsumer extends BaseChangeConsumer implements Debe
 
     }
 
-    private PubsubMessage buildPubSubMessage(BatchEvent record) {
+    @VisibleForTesting
+    PubsubMessage buildPubSubMessage(BatchEvent record) {
 
         final PubsubMessage.Builder pubsubMessage = PubsubMessage.newBuilder();
 
@@ -175,9 +184,31 @@ public class PubSubLiteChangeConsumer extends BaseChangeConsumer implements Debe
             pubsubMessage.setData(ByteString.copyFrom((byte[]) record.value()));
         }
 
-        pubsubMessage.putAllAttributes(convertHeaders(record));
+        pubsubMessage.putAllAttributes(resolveAttributes(record));
 
         return pubsubMessage.build();
+    }
+
+    /**
+     * Resolves Pub/Sub Lite message attributes from record headers based on {@code debezium.format.header.schemas.enable}.
+     *
+     * <p>When {@code debezium.format.header.schemas.enable=false}, uses raw Connect headers via
+     * {@link #convertRawHeaders(BatchEvent)} to avoid {@code JsonConverter} JSON string quoting (e.g. {@code "value"}).
+     * When {@code true} (default), keeps converter-serialized headers via {@link #convertHeaders(BatchEvent)}
+     * for backward compatibility.
+     *
+     * @param record the batch event containing headers to convert
+     * @return map of attributes to set on the Pub/Sub Lite message; never null
+     */
+    private Map<String, String> resolveAttributes(BatchEvent record) {
+        if (headerSchemasEnabled) {
+            return convertHeaders(record);
+        }
+        return convertRawHeaders(record);
+    }
+
+    private static boolean isHeaderSchemasEnabled(Config config) {
+        return config.getOptionalValue(PROP_HEADER_SCHEMAS_ENABLE, Boolean.class).orElse(true);
     }
 
     @Override
