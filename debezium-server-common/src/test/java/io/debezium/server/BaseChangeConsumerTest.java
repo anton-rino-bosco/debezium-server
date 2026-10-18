@@ -31,22 +31,35 @@ import io.debezium.runtime.BatchEvent;
 class BaseChangeConsumerTest {
 
     private static final String HEADER_SCHEMAS_ENABLE = "debezium.format.header.schemas.enable";
+    private static final String SCHEMAS_ENABLE = "debezium.format.schemas.enable";
 
     private final BaseChangeConsumer consumer = new BaseChangeConsumer();
 
     @Test
     void testHeaderSchemasDefaultToEnabled() {
-        assertThat(BaseChangeConsumer.isHeaderSchemasEnabled(mockConfig(Optional.empty()))).isTrue();
+        assertThat(BaseChangeConsumer.isHeaderSchemasEnabled(mockConfig(Optional.empty(), Optional.empty()))).isTrue();
     }
 
     @Test
     void testHeaderSchemasDisabled() {
-        assertThat(BaseChangeConsumer.isHeaderSchemasEnabled(mockConfig(Optional.of(false)))).isFalse();
+        assertThat(BaseChangeConsumer.isHeaderSchemasEnabled(mockConfig(Optional.of(false), Optional.empty()))).isFalse();
     }
 
     @Test
     void testHeaderSchemasEnabled() {
-        assertThat(BaseChangeConsumer.isHeaderSchemasEnabled(mockConfig(Optional.of(true)))).isTrue();
+        assertThat(BaseChangeConsumer.isHeaderSchemasEnabled(mockConfig(Optional.of(true), Optional.empty()))).isTrue();
+    }
+
+    @Test
+    void testHeaderSchemasFallBackToGlobalSetting() {
+        // debezium.format.schemas.enable also disables schemas for the header converter
+        assertThat(BaseChangeConsumer.isHeaderSchemasEnabled(mockConfig(Optional.empty(), Optional.of(false)))).isFalse();
+    }
+
+    @Test
+    void testHeaderSchemasSettingTakesPrecedenceOverGlobalSetting() {
+        assertThat(BaseChangeConsumer.isHeaderSchemasEnabled(mockConfig(Optional.of(true), Optional.of(false)))).isTrue();
+        assertThat(BaseChangeConsumer.isHeaderSchemasEnabled(mockConfig(Optional.of(false), Optional.of(true)))).isFalse();
     }
 
     @Test
@@ -116,9 +129,36 @@ class BaseChangeConsumerTest {
         assertThat(consumer.convertRawHeaders(event)).isEmpty();
     }
 
-    private static Config mockConfig(Optional<Boolean> headerSchemasEnabled) {
+    @Test
+    void testConvertRawHeadersRendersLogicalDateHeaderWithToString() {
+        // Non-primitive values are rendered with Object.toString(), the long-standing behavior of the
+        // SNS sink; this test pins the representation down.
+        java.util.Date date = new java.util.Date(0L);
+        ConnectHeaders headers = new ConnectHeaders();
+        headers.add("dateHeader", date, null);
+
+        assertThat(consumer.convertRawHeaders(createEventWithRawHeaders(headers, Map.of())))
+                .containsEntry("dateHeader", date.toString());
+    }
+
+    @Test
+    void testConvertRawHeadersRendersStructHeaderWithToString() {
+        org.apache.kafka.connect.data.Schema structSchema = org.apache.kafka.connect.data.SchemaBuilder.struct()
+                .field("field", org.apache.kafka.connect.data.Schema.STRING_SCHEMA)
+                .build();
+        org.apache.kafka.connect.data.Struct struct = new org.apache.kafka.connect.data.Struct(structSchema).put("field", "value");
+
+        ConnectHeaders headers = new ConnectHeaders();
+        headers.add("structHeader", struct, structSchema);
+
+        assertThat(consumer.convertRawHeaders(createEventWithRawHeaders(headers, Map.of())))
+                .containsEntry("structHeader", struct.toString());
+    }
+
+    private static Config mockConfig(Optional<Boolean> headerSchemasEnabled, Optional<Boolean> schemasEnabled) {
         Config config = mock(Config.class);
         when(config.getOptionalValue(HEADER_SCHEMAS_ENABLE, Boolean.class)).thenReturn(headerSchemasEnabled);
+        when(config.getOptionalValue(SCHEMAS_ENABLE, Boolean.class)).thenReturn(schemasEnabled);
         return config;
     }
 

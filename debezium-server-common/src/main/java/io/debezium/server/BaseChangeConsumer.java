@@ -35,6 +35,9 @@ public class BaseChangeConsumer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BaseChangeConsumer.class);
 
+    private static final String HEADER_SCHEMAS_ENABLE_PROPERTY = "debezium.format.header.schemas.enable";
+    private static final String SCHEMAS_ENABLE_PROPERTY = "debezium.format.schemas.enable";
+
     protected StreamNameMapper streamNameMapper = (x) -> x;
 
     @Inject
@@ -169,9 +172,13 @@ public class BaseChangeConsumer {
 
     /**
      * Whether the header converter serializes headers with their schemas, i.e. the
-     * {@code debezium.format.header.schemas.enable} setting. Defaults to {@code true} when unset.
+     * {@code debezium.format.header.schemas.enable} setting. Falls back to the global
+     * {@code debezium.format.schemas.enable} setting, which is also applied to the header converter by
+     * {@code DebeziumServerConfigSourceFactory}. Defaults to {@code true} when neither is set.
      */
     protected static boolean isHeaderSchemasEnabled(Config config) {
-        return config.getOptionalValue("debezium.format.header.schemas.enable", Boolean.class).orElse(true);
+        return config.getOptionalValue(HEADER_SCHEMAS_ENABLE_PROPERTY, Boolean.class)
+                .or(() -> config.getOptionalValue(SCHEMAS_ENABLE_PROPERTY, Boolean.class))
+                .orElse(true);
     }
 }
