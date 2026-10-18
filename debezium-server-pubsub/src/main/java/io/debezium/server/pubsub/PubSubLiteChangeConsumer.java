@@ -183,36 +183,9 @@ public class PubSubLiteChangeConsumer extends BaseChangeConsumer implements Debe
             pubsubMessage.setData(ByteString.copyFrom((byte[]) record.value()));
         }
 
-        pubsubMessage.putAllAttributes(resolveAttributes(record));
+        pubsubMessage.putAllAttributes(resolveHeaders(record, headerSchemasEnabled));
 
         return pubsubMessage.build();
-    }
-
-    /**
-     * Resolves the Pub/Sub Lite message attributes based on {@code debezium.format.header.schemas.enable};
-     * when schemas are disabled the raw Connect headers are used to avoid JSON-quoted values.
-     */
-    private Map<String, String> resolveAttributes(BatchEvent record) {
-        return headerSchemasEnabled ? convertHeaders(record) : extractRawHeaders(record);
-    }
-
-    /**
-     * Extracts raw Connect header values from the {@code SourceRecord}, bypassing the converter.
-     *
-     * <p>{@code convertHeaders} reads headers already serialized by the header converter (a JSON string
-     * wrapped in quotes when schemas are disabled); this reads the plain Java values instead, skipping
-     * {@code null} values.
-     */
-    private Map<String, String> extractRawHeaders(BatchEvent record) {
-        Map<String, String> result = new HashMap<>();
-        if (record.record() != null && record.record().headers() != null) {
-            record.record().headers().forEach(header -> {
-                if (header.value() != null) {
-                    result.put(header.key(), asString(header.value()));
-                }
-            });
-        }
-        return result;
     }
 
     @Override

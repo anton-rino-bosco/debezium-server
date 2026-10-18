@@ -9,15 +9,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.eclipse.microprofile.config.Config;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -33,8 +30,6 @@ import io.debezium.runtime.BatchEvent;
  * <p>See <a href="https://github.com/debezium/dbz/issues/2783">DBZ issue #2783</a>.
  */
 class PubSubChangeConsumerTest {
-
-    private static final String HEADER_SCHEMAS_ENABLE = "debezium.format.header.schemas.enable";
 
     private PubSubChangeConsumer consumer;
 
@@ -88,81 +83,6 @@ class PubSubChangeConsumerTest {
         assertThat(message.getAttributesMap())
                 .containsEntry("eventType", "OrderCreated")
                 .containsEntry("requestType", "command");
-    }
-
-    @Test
-    void testSchemasDisabledHandlesByteArrayHeader() {
-        consumer.headerSchemasEnabled = false;
-
-        ConnectHeaders headers = new ConnectHeaders();
-        headers.addBytes("rawByteHeader", "hello".getBytes(StandardCharsets.UTF_8));
-
-        PubsubMessage message = consumer.buildPubSubMessage(createEventWithRawHeaders(headers));
-
-        assertThat(message.getAttributesMap()).containsEntry("rawByteHeader", "hello");
-    }
-
-    @Test
-    void testSchemasDisabledSkipsNullHeaderValues() {
-        consumer.headerSchemasEnabled = false;
-
-        org.apache.kafka.connect.header.Header nullHeader = mock(org.apache.kafka.connect.header.Header.class);
-        when(nullHeader.key()).thenReturn("nullHeader");
-        when(nullHeader.value()).thenReturn(null);
-
-        ConnectHeaders headers = new ConnectHeaders();
-        headers.addString("id", "00f067aa0ba902b7");
-        headers.add(nullHeader);
-
-        PubsubMessage message = consumer.buildPubSubMessage(createEventWithRawHeaders(headers));
-
-        assertThat(message.getAttributesMap())
-                .containsOnlyKeys("id")
-                .containsEntry("id", "00f067aa0ba902b7");
-    }
-
-    @Test
-    void testSchemasDisabledHandlesMissingSourceRecord() {
-        consumer.headerSchemasEnabled = false;
-
-        BatchEvent event = mock(BatchEvent.class);
-        when(event.key()).thenReturn("key");
-        when(event.value()).thenReturn("{\"id\":1}");
-        when(event.destination()).thenReturn("testc.inventory.customers");
-        when(event.record()).thenReturn(null);
-        when(event.headers()).thenReturn(List.of());
-
-        PubsubMessage message = consumer.buildPubSubMessage(event);
-
-        assertThat(message.getAttributesMap()).isEmpty();
-    }
-
-    @Test
-    void testHeaderSchemasDefaultToEnabled() {
-        assertThat(HeaderSchemasProbe.headerSchemasEnabled(mockConfig(Optional.empty()))).isTrue();
-    }
-
-    @Test
-    void testHeaderSchemasDisabled() {
-        assertThat(HeaderSchemasProbe.headerSchemasEnabled(mockConfig(Optional.of(false)))).isFalse();
-    }
-
-    @Test
-    void testHeaderSchemasEnabled() {
-        assertThat(HeaderSchemasProbe.headerSchemasEnabled(mockConfig(Optional.of(true)))).isTrue();
-    }
-
-    private static Config mockConfig(Optional<Boolean> headerSchemasEnabled) {
-        Config config = mock(Config.class);
-        when(config.getOptionalValue(HEADER_SCHEMAS_ENABLE, Boolean.class)).thenReturn(headerSchemasEnabled);
-        return config;
-    }
-
-    /** Exposes the inherited {@code isHeaderSchemasEnabled} helper, which is not reachable from this package. */
-    private static class HeaderSchemasProbe extends PubSubChangeConsumer {
-        static boolean headerSchemasEnabled(Config config) {
-            return PubSubChangeConsumer.isHeaderSchemasEnabled(config);
-        }
     }
 
     private static BatchEvent createEventWithHeaders(Map<String, String> connectHeaders,

@@ -144,6 +144,30 @@ public class BaseChangeConsumer {
     }
 
     /**
+     * Converts the headers of the given event into a string map. When {@code headerSchemasEnabled} is
+     * {@code false}, the raw Connect header values are used to avoid converter-serialized values (a JSON
+     * string wrapped in quotes when schemas are disabled); otherwise the converter-serialized values are used.
+     */
+    protected Map<String, String> resolveHeaders(BatchEvent record, boolean headerSchemasEnabled) {
+        return headerSchemasEnabled ? convertHeaders(record) : convertRawHeaders(record);
+    }
+
+    /**
+     * Extracts raw Connect header values from the {@code SourceRecord}, bypassing the header converter.
+     *
+     * <p>{@link #convertHeaders(BatchEvent)} reads headers already serialized by the header converter; this
+     * reads the plain Java values instead. A {@code null} header value is mapped to the empty string.
+     */
+    protected Map<String, String> convertRawHeaders(BatchEvent record) {
+        Map<String, String> result = new HashMap<>();
+        if (record.record() == null || record.record().headers() == null) {
+            return result;
+        }
+        record.record().headers().forEach(header -> result.put(header.key(), header.value() == null ? "" : asString(header.value())));
+        return result;
+    }
+
+    /**
      * Whether the header converter serializes headers with their schemas, i.e. the
      * {@code debezium.format.header.schemas.enable} setting. Defaults to {@code true} when unset.
      */
