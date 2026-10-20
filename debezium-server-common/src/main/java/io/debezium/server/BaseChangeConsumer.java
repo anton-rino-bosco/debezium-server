@@ -159,14 +159,15 @@ public class BaseChangeConsumer {
      * Extracts raw Connect header values from the {@code SourceRecord}, bypassing the header converter.
      *
      * <p>{@link #convertHeaders(BatchEvent)} reads headers already serialized by the header converter; this
-     * reads the plain Java values instead. A {@code null} header value is mapped to the empty string.
+     * reads the plain Java values instead. Headers with a {@code null} value are skipped.
      */
     protected Map<String, String> convertRawHeaders(BatchEvent record) {
         Map<String, String> result = new HashMap<>();
-        if (record.record() == null || record.record().headers() == null) {
-            return result;
-        }
-        record.record().headers().forEach(header -> result.put(header.key(), header.value() == null ? "" : asString(header.value())));
+        record.record().headers().forEach(header -> {
+            if (header.value() != null) {
+                result.put(header.key(), asString(header.value()));
+            }
+        });
         return result;
     }
 

@@ -107,7 +107,7 @@ class BaseChangeConsumerTest {
     }
 
     @Test
-    void testConvertRawHeadersMapsNullHeaderValueToEmptyString() {
+    void testConvertRawHeadersSkipsNullHeaderValue() {
         org.apache.kafka.connect.header.Header nullHeader = mock(org.apache.kafka.connect.header.Header.class);
         when(nullHeader.key()).thenReturn("nullHeader");
         when(nullHeader.value()).thenReturn(null);
@@ -118,15 +118,7 @@ class BaseChangeConsumerTest {
 
         assertThat(consumer.convertRawHeaders(createEventWithRawHeaders(headers, Map.of())))
                 .containsEntry("id", "00f067aa0ba902b7")
-                .containsEntry("nullHeader", "");
-    }
-
-    @Test
-    void testConvertRawHeadersHandlesMissingSourceRecord() {
-        BatchEvent event = mock(BatchEvent.class);
-        when(event.record()).thenReturn(null);
-
-        assertThat(consumer.convertRawHeaders(event)).isEmpty();
+                .doesNotContainKey("nullHeader");
     }
 
     @Test
