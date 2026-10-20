@@ -19,8 +19,6 @@ import io.quarkus.test.junit.TestProfile;
 /**
  * Integration test that verifies the Pub/Sub sink forwards raw Connect header values as message attributes
  * when header schemas are disabled, i.e. with {@code debezium.format.header.schemas.enable=false}.
- *
- * <p>See <a href="https://github.com/debezium/dbz/issues/2783">DBZ issue #2783</a>.
  */
 @QuarkusTest
 @QuarkusTestResource(PostgresTestResourceLifecycleManager.class)

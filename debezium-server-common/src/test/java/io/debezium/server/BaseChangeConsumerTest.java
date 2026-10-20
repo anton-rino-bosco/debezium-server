@@ -25,8 +25,6 @@ import io.debezium.runtime.BatchEvent;
 
 /**
  * Unit tests for the header conversion helpers of {@link BaseChangeConsumer}.
- *
- * <p>See <a href="https://github.com/debezium/dbz/issues/2783">DBZ issue #2783</a>.
  */
 class BaseChangeConsumerTest {
 

@@ -10,11 +10,10 @@ import java.util.Map;
 import io.quarkus.test.junit.QuarkusTestProfile;
 
 /**
- * Runs the Pub/Sub sink integration test with {@code debezium.format.header.schemas.enable=false}. In that
- * configuration the header converter serializes a string header as a JSON string, so the sink has to fall
- * back to the raw Connect header value.
+ * Test profile that turns off header schemas ({@code debezium.format.header.schemas.enable=false}).
  *
- * <p>See <a href="https://github.com/debezium/dbz/issues/2783">DBZ issue #2783</a>.
+ * <p>Without schemas the header converter no longer wraps a header value in a JSON schema envelope, so
+ * the sink must publish the value of the raw Connect header instead of the converter-serialized one.
  */
 public class PubSubHeaderSchemasDisabledProfile implements QuarkusTestProfile {
 

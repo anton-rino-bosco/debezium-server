@@ -6,7 +6,6 @@
 package io.debezium.server.pubsub;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -57,8 +56,6 @@ import io.grpc.ManagedChannelBuilder;
  *
  * <p>Verifies basic reading from PostgreSQL database and writing to a Google Cloud PubSub stream running on a
  * Google PubSub Emulator.
- *
- * @author Jiri Pechanec
  */
 public abstract class PubSubBaseIT {
 
@@ -120,7 +117,10 @@ public abstract class PubSubBaseIT {
      * the values produced for a specific header converter configuration.
      */
     protected void assertHeaderAttributes(PubsubMessage message) {
-        assertTrue(message.getAttributesMap().containsKey("headerKey"));
+        // With header schemas enabled, the default, the header converter serializes the value together
+        // with its schema, and that is what the sink has always forwarded as the attribute value.
+        assertThat(message.getAttributesMap()).containsEntry("headerKey",
+                "{\"schema\":{\"type\":\"string\",\"optional\":false},\"payload\":\"headerValue\"}");
     }
 
     void setupDependencies(@Observes ConnectorStartedEvent event) throws IOException {

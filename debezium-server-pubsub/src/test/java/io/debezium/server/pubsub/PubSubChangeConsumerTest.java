@@ -12,8 +12,6 @@ import io.debezium.runtime.BatchEvent;
 
 /**
  * Unit tests for the {@link PubSubChangeConsumer} header to attribute mapping.
- *
- * <p>See <a href="https://github.com/debezium/dbz/issues/2783">DBZ issue #2783</a>.
  */
 class PubSubChangeConsumerTest extends AbstractPubSubChangeConsumerTest {
 

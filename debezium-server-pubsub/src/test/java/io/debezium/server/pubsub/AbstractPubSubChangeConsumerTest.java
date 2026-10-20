@@ -28,8 +28,6 @@ import io.debezium.runtime.BatchEvent;
  *
  * <p>Both sinks share the raw-header extraction in {@code BaseChangeConsumer}; these tests verify
  * that each sink wires the resolved headers into the message attributes.
- *
- * <p>See <a href="https://github.com/debezium/dbz/issues/2783">DBZ issue #2783</a>.
  */
 abstract class AbstractPubSubChangeConsumerTest {
 
